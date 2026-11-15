@@ -205,10 +205,11 @@ class TestProperties(unittest.TestCase):
         self.assertEqual(len(bonds), 15)
         self.assertTrue(all(b["order"] > 0 for b in bonds))
 
-    def test_nbo_is_not_claimed(self):
+    def test_nbo_keys_are_empty_without_an_nbo_section(self):
         data = _parse("water_rhf_mo")
-        self.assertNotIn("nbo_orbitals", data)
-        self.assertNotIn("nbo_perturbation", data)
+        self.assertEqual(data["nbo_orbitals"], [])
+        self.assertEqual(data["nbo_perturbation"], [])
+        self.assertIsNone(data["nbo_totals"])
 
 
 class TestOrbitals(unittest.TestCase):
@@ -342,6 +343,82 @@ class TestOrthonormalOnAGrid(unittest.TestCase):
 
     def test_restricted_open_shell(self):
         self._assert_orthonormal("o2_rohf", "restricted", 30)
+
+
+class TestNbo7Block(unittest.TestCase):
+    """A GAMESS log with an NBO 7.0 analysis (water_nbo7.out).
+
+    GAMESS's NBO 7.0 interface prints the NBO program's own sections
+    into the log; the parser reads them into the same data keys the
+    Gaussian and ORCA analyzers use.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = _parse("water_nbo7")
+
+    def test_orbitals_come_from_the_summary(self):
+        orbitals = self.data["nbo_orbitals"]
+        self.assertEqual(len(orbitals), 24)
+        self.assertEqual(orbitals[0]["type"], "CR")
+        self.assertEqual(orbitals[3]["type"], "BD")
+        self.assertAlmostEqual(orbitals[3]["occupancy"], 1.99864, places=4)
+
+    def test_hybrids_are_attached(self):
+        bd = self.data["nbo_orbitals"][3]
+        self.assertIn("hybrids", bd)
+        self.assertEqual(len(bd["hybrids"]), 2)
+        self.assertEqual(bd["hybrids"][0]["atom_sym"], "O")
+
+    def test_perturbation_rows(self):
+        rows = self.data["nbo_perturbation"]
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(rows[0]["donor"], "2. LP ( 1) O  1")
+        self.assertAlmostEqual(rows[0]["e2_kcal"], 1.95, places=2)
+        self.assertAlmostEqual(rows[-1]["e2_kcal"], 0.92, places=2)
+
+    def test_totals(self):
+        totals = self.data["nbo_totals"]
+        self.assertIsNotNone(totals)
+        self.assertAlmostEqual(totals["lewis"], 9.98992, places=4)
+        self.assertAlmostEqual(totals["lewis_pct"], 99.899, places=2)
+
+    def test_population_and_nbo_charges(self):
+        population = self.data["nbo_population"]
+        self.assertEqual(len(population), 3)
+        self.assertAlmostEqual(population[0]["total"], 8.88482, places=4)
+        charges = self.data["charges"]["NBO"]
+        self.assertEqual(len(charges), 3)
+        self.assertAlmostEqual(charges[0]["charge"], -0.88482, places=4)
+        self.assertAlmostEqual(charges[0]["valence"], 6.86890, places=4)
+        self.assertEqual(charges[0]["atom_idx"], 0)
+
+    def test_configurations(self):
+        configs = self.data["nbo_configurations"]
+        self.assertEqual(len(configs), 3)
+        oxygen = configs[0]
+        self.assertAlmostEqual(oxygen["orbitals"]["2p"], 5.12, places=2)
+
+    def test_nao_occupancies_sum_to_the_electron_count(self):
+        total = sum(r["occupancy"] for r in self.data["nbo_nao"])
+        self.assertAlmostEqual(total, 10.0, places=2)
+
+    def test_bending_rows(self):
+        rows = self.data["nbo_bending"]
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["type"], "LP")
+        self.assertAlmostEqual(rows[0]["h1_theta"], 90.8, places=1)
+
+    def test_a_log_without_nbo_has_no_nbo_data(self):
+        data = _parse("benzene_opt_hess")
+        self.assertEqual(data["nbo_orbitals"], [])
+        self.assertEqual(data["nbo_perturbation"], [])
+        self.assertIsNone(data["nbo_totals"])
+        self.assertEqual(data["nbo_population"], [])
+        self.assertEqual(data["nbo_configurations"], [])
+        self.assertEqual(data["nbo_nao"], [])
+        self.assertEqual(data["nbo_bending"], [])
+        self.assertNotIn("NBO", data["charges"])
 
 
 if __name__ == "__main__":
