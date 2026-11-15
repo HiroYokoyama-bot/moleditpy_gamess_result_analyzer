@@ -346,7 +346,7 @@ class TestOrthonormalOnAGrid(unittest.TestCase):
 
 
 class TestNbo7Block(unittest.TestCase):
-    """A GAMESS log with an NBO 7.0 analysis (water_nbo7.out).
+    """The NBO 7.0 block (water_nbo7_block.out) — the block only.
 
     GAMESS's NBO 7.0 interface prints the NBO program's own sections
     into the log; the parser reads them into the same data keys the
@@ -355,7 +355,7 @@ class TestNbo7Block(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.data = _parse("water_nbo7")
+        cls.data = _parse("water_nbo7_block")
 
     def test_orbitals_come_from_the_summary(self):
         orbitals = self.data["nbo_orbitals"]

@@ -47,6 +47,8 @@ class TestFixturePrivacy(unittest.TestCase):
 
     def test_the_log_starts_at_the_program_banner(self):
         for name in _samples():
+            if "_block" in name:
+                continue  # an excerpt fixture, not a full log
             with self.subTest(fixture=name):
                 self.assertIn("GAMESS VERSION =", "".join(_read(name).splitlines(True)[:6]))
 
