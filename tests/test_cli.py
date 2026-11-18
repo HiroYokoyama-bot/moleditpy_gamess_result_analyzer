@@ -119,6 +119,63 @@ class Json(unittest.TestCase):
                 )
 
 
+def _frames(text):
+    """Split multi-frame XYZ text into (comment, rows) pairs."""
+    lines, frames = text.splitlines(), []
+    while lines:
+        count = int(lines[0])
+        frames.append((lines[1], [row.split() for row in lines[2 : 2 + count]]))
+        lines = lines[2 + count :]
+    return frames
+
+
+class Xyz(unittest.TestCase):
+    def test_the_final_structure(self):
+        code, out, _ = _run("xyz", _sample("water_opt_freq.out"))
+        self.assertEqual(code, 0)
+        ((comment, rows),) = _frames(out)
+        self.assertEqual(comment, "water_opt_freq.out  E = -76.0107465155 Eh")
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[1][0], "H")
+        self.assertAlmostEqual(float(rows[1][2]), 0.75407078)
+
+    def test_a_scan_writes_one_frame_per_point(self):
+        code, out, _ = _run("xyz", _sample("water_drc.out"), "--all")
+        self.assertEqual(code, 0)
+        frames = _frames(out)
+        self.assertEqual(len(frames), 7)
+        self.assertEqual(
+            frames[0][0],
+            "water_drc.out  point 1  E = -74.9631467900 Eh  coordinate = 0.0",
+        )
+        self.assertTrue(all(len(rows) == 3 for _, rows in frames))
+
+    def test_an_optimisation_writes_every_cycle(self):
+        code, out, _ = _run("xyz", _sample("water_opt_freq.out"), "--all")
+        self.assertEqual(code, 0)
+        comments = [comment for comment, _ in _frames(out)]
+        self.assertEqual(len(comments), 6)
+        self.assertIn("opt_cycle 1", comments[0])
+        self.assertIn("opt_cycle 6", comments[-1])
+
+    def test_all_without_steps_is_an_error(self):
+        code, out, err = _run("xyz", _sample("methanol_nmr.out"), "--all")
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("no optimisation, scan or IRC steps", err)
+
+    def test_output_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "final.xyz")
+            code, out, _ = _run("xyz", _sample("o2_rohf.out"), "-o", path)
+            self.assertEqual((code, out), (0, ""))
+            with open(path, encoding="utf-8") as handle:
+                self.assertEqual(handle.readline(), "2\n")
+
+    def test_a_comment_stays_on_one_line(self):
+        text = M.xyz_frame(["H"], [(0.0, 0.0, 0.0)], "a\nb")
+        self.assertEqual(text.splitlines()[1], "a b")
+
+
 class Errors(unittest.TestCase):
     def test_a_missing_file(self):
         code, out, err = _run("parse", os.path.join(SAMPLES, "missing.out"))
