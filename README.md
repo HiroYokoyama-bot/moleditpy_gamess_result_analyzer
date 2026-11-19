@@ -92,7 +92,7 @@ RHF/6-31G(d) against Gaussian 16.
 
 ## Command line
 
-With MoleditPy 5.3.0 or later the analyzer also runs without a window, so a
+The analyzer also runs without a window, so a
 script, a batch job or a remote shell can read an output file directly. No
 editor and no Qt window is opened.
 
@@ -104,8 +104,18 @@ moleditpy -r gamess_result_analyzer xyz job.log -o final.xyz      # final struct
 moleditpy -r gamess_result_analyzer xyz job.log --all -o path.xyz # every step, one frame each
 ```
 
-`-r` is short for `--run-plugin`; `moleditpy --list-plugins` shows the installed
-plugins that can be run this way. `FILE` is a GAMESS output file.
+`moleditpy -r` needs MoleditPy 5.3.0 or later. `-r` is short for
+`--run-plugin`; `moleditpy --list-plugins` shows the installed
+plugins that can be run this way. `python -m` works just as well, from the
+folder that contains the `gamess_result_analyzer` folder (your plugins folder, or a checkout of
+this repository), with the Python MoleditPy is installed in, and needs no
+MoleditPy launcher:
+
+```bash
+python -m gamess_result_analyzer parse job.log
+```
+
+`FILE` is a GAMESS output file.
 
 | Command | What it does |
 |---|---|
@@ -117,8 +127,7 @@ plugins that can be run this way. `FILE` is a GAMESS output file.
 Every command takes `-o PATH` to write a file instead of standard output.
 The exit status is 0 on success, 1 when the file cannot be read, is not GAMESS
 output or has nothing to write, and 2 for a usage error such as an unknown
-section. With the plugin's parent folder as the working directory,
-`python -m gamess_result_analyzer ...` does the same without MoleditPy's launcher.
+section.
 
 ## Installation
 
