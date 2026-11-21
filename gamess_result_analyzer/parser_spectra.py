@@ -243,8 +243,9 @@ class _SpectraParsingMixin:
                 continue
             amplitude = _AMPLITUDE.match(line)
             if amplitude and current is not None:
+                # GAMESS prints orbitals from 1; the MO table numbers them from 0.
                 current["transitions"].append(
-                    f"{amplitude.group(1)} -> {amplitude.group(2)} "
+                    f"{int(amplitude.group(1)) - 1} -> {int(amplitude.group(2)) - 1} "
                     f"(coeff: {amplitude.group(3)})"
                 )
         self.data["tddft"] = [states[k] for k in sorted(states)]
