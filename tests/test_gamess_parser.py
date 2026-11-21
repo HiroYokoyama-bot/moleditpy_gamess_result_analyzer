@@ -129,7 +129,10 @@ class TestSpectra(unittest.TestCase):
         self.assertEqual(len(states), 5)
         self.assertAlmostEqual(states[1]["energy_ev"], 9.077)
         self.assertAlmostEqual(states[1]["osc_len"], 0.1567)
-        self.assertIn("8 -> 10", " ".join(states[1]["transitions"]))
+        # GAMESS prints orbitals from 1 and the MO table from 0, so the
+        # printed 8 -> 10 reads 7 -> 9 here.
+        self.assertIn("7 -> 9", " ".join(states[1]["transitions"]))
+        self.assertIn("7 -> 8", " ".join(states[0]["transitions"]))
 
     def test_a_repeated_tddft_run_keeps_only_its_own_amplitudes(self):
         """An optimization prints a TD-DFT run per geometry; the amplitudes of
@@ -150,7 +153,9 @@ class TestSpectra(unittest.TestCase):
         self.assertEqual(
             [s["transitions"] for s in twice], [s["transitions"] for s in once]
         )
-        self.assertNotIn("7 -> 9", " ".join(twice[0]["transitions"]))
+        # The planted row (printed 7 -> 9) would read 6 -> 8 after the
+        # 0-based conversion if it had leaked into the later run's states.
+        self.assertNotIn("6 -> 8", " ".join(twice[0]["transitions"]))
 
     def test_tddft_claims_only_the_length_gauge(self):
         state = _parse("h2co_tddft")["tddft"][0]
